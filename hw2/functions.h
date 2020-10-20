@@ -40,9 +40,7 @@ char *createFoldername();
 
 // process the csv
 void processCSV(char *, char *);
-char **getYears(char *, int *);
 
-void freeList(struct years *);
 // helpful functions
 void clearInput();
 

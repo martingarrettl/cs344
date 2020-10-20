@@ -270,46 +270,52 @@ char *createFoldername() {
 ***************************************************************************/
 void processCSV(char *filename, char *dirname) {
   // turn the filename into a usable path
-  char *filepath = (char *)calloc(1, sizeof(filename) + 9);
-  strcpy(filepath, "./");
-  strcat(filepath, dirname);
-  strcat(filepath, "/");
-  strcat(filepath, filename);
-  strcat(filepath, "\0");
-  printf("filepath: %s\n", filepath);
-
-  int nYears = 0;
-  char **years = getYears(filename,  &nYears);
+  char *dPath = (char *)calloc(1, strlen(dirname) + 12);
+  strcpy(dPath, "./");
+  strcat(dPath, dirname);
+  printf("filepath: %s\n", dPath);
 
   // create new directory w/ rwxr-x--- permissions
-  int newdir;
-  newdir = mkdir(dirname, 0750);
+  int newdir = mkdir(dirname, 0750);
 
-/*
-  // loop over each year in csv
-  while (something != nothing) {
-
-    // create file to write to w/ rw-r-----
-    int file_descriptor;
-    file_descriptor = open(pathtofile, O_RDWR | O_CREAT | O_TRUNC, 0640);
-  }
-*/
-
-  free(filepath);
-}
-/**************************************************************************
-  Title:
-  Description:
-***************************************************************************/
-char **getYears(char *filename, int *n) {
-  char **yearArray;
-
+  char *year = (char *)calloc(1, strlen(dirname) + strlen("/1111.txt\0") + 1);
   FILE *data = fopen(filename, "r");
-  char *temp = NULL;
+  char *temp;
+  size_t len = 0;
+  ssize_t nread;
 
+  // get rid of that line with none of the GOOD data, that realLY REALLY GOOD DATA
+  nread = getline(&temp, &len, data);
+  // go line by line through source csv and output into corresponding txt files
+  while ((nread = getline(&temp, &len, data)) != -1){
+    // get the year the current line is associated with
+    char *duplicate = (char *)calloc(1, strlen(temp) + 1);
+    strcpy(duplicate, temp);
+    char *tempstr;
+    char *token = strtok_r(duplicate, ",", &tempstr);
+    token = strtok_r(NULL, ",", &tempstr);
+    // string stuff to make year a usable path
+    strcpy(year, dirname);
+    strcat(year, "/");
+    strcat(year, token);
+    strcat(year, ".txt\0");
 
+    // make or append to corresponding txt file and then adjust permissions.
+    FILE *f = fopen(year, "a+");
+    token = strtok_r(temp, ",", &tempstr);
+    duplicate = (char *)realloc(duplicate, strlen(token) + strlen("\n\0") + 1);
+    strcpy(duplicate, token);
+    strcat(duplicate, "\n\0");
+    fputs(duplicate, f);
 
-  return yearArray;
+    fclose(f);
+    int permissions = chmod(year, 0640);
+    free(duplicate);
+  }
+
+  fclose(data);
+  free(year);
+  free(dPath);
 }
 /**************************************************************************
   Title: clearInput
