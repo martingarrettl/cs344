@@ -11,23 +11,17 @@
 #define FUNCTIONS_H
 
 #define PREFIX "movies_"
+#define SUFFIX ".csv"
 
 #include <stdio.h>  // printf, scanf, sprintf
 #include <stdlib.h> //  srand, rand
 #include <time.h> // time
-#include <string.h> // strcpy, strcat
+#include <string.h> // strcpy, strcat, strncmp, strstr
 #include <dirent.h> // directory stuff
-#include <sys/stat.h>
-#include <fcntl.h> // open
-#include <unistd.h> // close
-
-struct movies {
-  char *title;
-  int year;
-  char **langs;
-  int n_langs;
-  float rating;
-};
+#include <sys/stat.h> // stat struct
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 // main loop
 void userOptions(int *);
@@ -35,14 +29,20 @@ void checkOptions(int, int *);
 void selectFileProcess();
 void checkSelectFile(int);
 
-// processing files
+// related to largest/smallest/specified filename
 void processLargest();
 void processSmallest();
 void processFilename();
 char *findLargest();
 char *findSmallest();
+int findFilename(char *);
 char *createFoldername();
 
+// process the csv
+void processCSV(char *, char *);
+char **getYears(char *, int *);
+
+void freeList(struct years *);
 // helpful functions
 void clearInput();
 

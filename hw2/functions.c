@@ -20,6 +20,7 @@ void userOptions(int *end) {
   printf("2. Exit\n");
   printf("Enter option 1 or 2: ");
   scanf("%d", &option);
+  printf("\n");
   checkOptions(option, end);
   clearInput();
 }
@@ -54,8 +55,9 @@ void selectFileProcess() {
   printf("\t3. Specify file by filename\n");
   printf("Enter option 1-3: ");
   scanf("%d", &option);
+  printf("\n");
   checkSelectFile(option);
-  // clearInput();
+
 }
 /**************************************************************************
   Title:
@@ -85,25 +87,13 @@ void checkSelectFile(int opt) {
 void processLargest() {
   char *dirname = createFoldername();
   char *largest = findLargest();
-  char *fname = (char *)calloc(1, sizeof(largest) + 17);
 
   printf("Now processing the largest file, named %s\n", largest);
-  // make new string with ./ so largest is actually an openable filename
-  strcpy(fname, "./");
-  strcat(fname, largest);
-  strcat(fname, "\0");
 
-  int file = open(fname, O_RDONLY);
-  if (file  == -1) {
-    printf("open() failed on \"%s\"\n", fname);
-    perror("Error");
-    exit(1);
-  }
-
+  processCSV(largest, dirname);
   printf("Created directory with name %s\n", dirname);
 
-  close(file);
-  free(fname);
+  printf("\n");
   free(largest);
   free(dirname);
 }
@@ -116,8 +106,11 @@ void processSmallest() {
   char *smallest = findSmallest();
 
   printf("Now processing the smallest file, named %s\n", smallest);
+
+  processCSV(smallest, dirname);
   printf("Created directory with name %s\n", dirname);
 
+  printf("\n");
   free(smallest);
   free(dirname);
 }
@@ -127,13 +120,21 @@ void processSmallest() {
 ***************************************************************************/
 void processFilename() {
   char *dirname = createFoldername();
-  char filename[120];
+  char filename[25];
 
   printf("Enter the complete filename: ");
   scanf("%s", filename);
 
-  printf("Now processing the file named %s\n", filename);
-  printf("Created directory with name %s\n", dirname);
+  int exists = findFilename(filename);
+
+  if (exists == 1) {
+    printf("Now processing the file named %s\n", filename);
+    processCSV(filename, dirname);
+    printf("Created directory with name %s\n", dirname);
+  } else  {
+    printf("ERROR: File named \"%s\" not found.\n\n", filename);
+    selectFileProcess();
+  }
 
   free(dirname);
 }
@@ -143,7 +144,10 @@ void processFilename() {
 ***************************************************************************/
 char *findLargest(){
   char *largest = (char *)malloc(4);
+  char filetype [] = ".csv";
+  char *temp;
 
+  // modified code from an example on "Exploration: Directories" page
   // open working directory
   DIR* wd = opendir(".");
   struct dirent *aDir;
@@ -152,12 +156,18 @@ char *findLargest(){
 
   // loop over all the entries in the directory
   while((aDir = readdir(wd))) {
+    // make sure the file starts with movies_
     if(strncmp(PREFIX, aDir->d_name, strlen(PREFIX)) == 0){
-      stat(aDir->d_name, &dirStat);
-      if (dirStat.st_size > current) {
-        current = dirStat.st_size;
-        largest = (char *)realloc(largest, sizeof(aDir->d_name));
-        strcpy(largest, aDir->d_name);
+      // make sure it's of type .csv
+      temp = strstr(aDir->d_name, filetype);
+      if (temp != NULL){
+       stat(aDir->d_name, &dirStat);
+       // we want the biggest one
+        if (dirStat.st_size > current) {
+          current = dirStat.st_size;
+          largest = (char *)realloc(largest, sizeof(aDir->d_name));
+          strcpy(largest, aDir->d_name);
+        }
       }
     }
   }
@@ -172,7 +182,10 @@ char *findLargest(){
 ***************************************************************************/
 char *findSmallest(){
   char *smallest = (char *)malloc(4);
+  char filetype [] = ".csv";
+  char *temp;
 
+  // modified code from an example on "Exploration: Directories" page
   // open working directory
   DIR* wd = opendir(".");
   struct dirent *aDir;
@@ -181,12 +194,18 @@ char *findSmallest(){
 
   // loop over all the entries in the directory
   while((aDir = readdir(wd))) {
+    // make sure the file starts with movies_
     if(strncmp(PREFIX, aDir->d_name, strlen(PREFIX)) == 0){
-      stat(aDir->d_name, &dirStat);
-      if (dirStat.st_size < current) {
-        current = dirStat.st_size;
-        smallest = (char *)realloc(smallest, sizeof(aDir->d_name));
-        strcpy(smallest, aDir->d_name);
+      // make sure it is of type .csv
+      temp = strstr(aDir->d_name, filetype);
+      if (temp != NULL){
+        stat(aDir->d_name, &dirStat);
+        // we want the smallest one
+        if (dirStat.st_size < current) {
+          current = dirStat.st_size;
+          smallest = (char *)realloc(smallest, sizeof(aDir->d_name));
+          strcpy(smallest, aDir->d_name);
+        }
       }
     }
   }
@@ -194,6 +213,34 @@ char *findSmallest(){
   closedir(wd);
 
   return smallest;
+}
+/**************************************************************************
+  Title:
+  Description:
+***************************************************************************/
+int findFilename(char *filename) {
+  int a = 0; // int as bool to return
+
+  char *tempstr = (char *)calloc(1, sizeof(filename) + sizeof(SUFFIX) + 5);
+  strcpy(tempstr, filename);
+  strcat(tempstr, SUFFIX);
+  strcat(tempstr, "\0");
+
+  // open working directory
+  DIR* wd = opendir(".");
+  struct dirent *aDir;
+
+  // loop over directory and compare each file against provided filename
+  while((aDir = readdir(wd))) {
+    if(strncmp(tempstr, aDir->d_name, strlen(tempstr)) == 0) {
+      a = 1;
+    }
+  }
+
+  closedir(wd);
+  free(tempstr);
+
+  return a;
 }
 /**************************************************************************
   Title:
@@ -216,6 +263,53 @@ char *createFoldername() {
 
   free(numstr);
   return str;
+}
+/**************************************************************************
+  Title:
+  Description:
+***************************************************************************/
+void processCSV(char *filename, char *dirname) {
+  // turn the filename into a usable path
+  char *filepath = (char *)calloc(1, sizeof(filename) + 9);
+  strcpy(filepath, "./");
+  strcat(filepath, dirname);
+  strcat(filepath, "/");
+  strcat(filepath, filename);
+  strcat(filepath, "\0");
+  printf("filepath: %s\n", filepath);
+
+  int nYears = 0;
+  char **years = getYears(filename,  &nYears);
+
+  // create new directory w/ rwxr-x--- permissions
+  int newdir;
+  newdir = mkdir(dirname, 0750);
+
+/*
+  // loop over each year in csv
+  while (something != nothing) {
+
+    // create file to write to w/ rw-r-----
+    int file_descriptor;
+    file_descriptor = open(pathtofile, O_RDWR | O_CREAT | O_TRUNC, 0640);
+  }
+*/
+
+  free(filepath);
+}
+/**************************************************************************
+  Title:
+  Description:
+***************************************************************************/
+char **getYears(char *filename, int *n) {
+  char **yearArray;
+
+  FILE *data = fopen(filename, "r");
+  char *temp = NULL;
+
+
+
+  return yearArray;
 }
 /**************************************************************************
   Title: clearInput

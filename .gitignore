@@ -1,3 +1,6 @@
 .ccls-cache/
+testfiles/
 *.out
 *.gch
+movies*
+vgcore.*
