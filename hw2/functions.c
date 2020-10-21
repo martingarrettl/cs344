@@ -10,23 +10,34 @@
 #include "functions.h"
 
 /**************************************************************************
-  Title:
-  Description:
+  Title: userOptions
+  Description: prints the main menu options available to the user and
+               accepts their choice.
 ***************************************************************************/
 void userOptions(int *end) {
   int option;
 
-  printf("1. Select file to process\n");
-  printf("2. Exit\n");
+  char *temp = NULL, *temp2;
+  size_t len = 0;
+  ssize_t read;
+
+  printf("\t1. Select file to process\n");
+  printf("\t2. Exit\n");
   printf("Enter option 1 or 2: ");
-  scanf("%d", &option);
+
+  // i use this more convoluted method to get an int from user because i
+  // kept getting a buffer underflow error later in the program with scanf.
+  read = getline(&temp, &len, stdin);
+  temp = strtok_r(temp, "\n", &temp2);
+  option = atoi(temp);
   printf("\n");
+
+  free(temp);
   checkOptions(option, end);
-  clearInput();
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: checkOptions
+  Description: takes a user main menu option and directs it accordingly.
 ***************************************************************************/
 void checkOptions(int opt, int *end) {
   switch(opt) {
@@ -43,25 +54,32 @@ void checkOptions(int opt, int *end) {
   }
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: selectFileProcess
+  Description: Prints the list of processing options available to the user
+               and allows them to select a choice.
 ***************************************************************************/
 void selectFileProcess() {
   int option;
+
+  char *temp = NULL, *temp2;
+  size_t len = 0;
+  ssize_t read;
 
   printf("Which file do you want to process?\n");
   printf("\t1. Select largest file\n");
   printf("\t2. Select smallest file\n");
   printf("\t3. Specify file by filename\n");
   printf("Enter option 1-3: ");
-  scanf("%d", &option);
-  printf("\n");
+  read = getline(&temp, &len, stdin);
+  temp = strtok_r(temp, "\n", &temp2);
+  option = atoi(temp);
   checkSelectFile(option);
 
+  free(temp);
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: checkSelectFile
+  Description: takes user processing choice and directs it accordingly.
 ***************************************************************************/
 void checkSelectFile(int opt) {
   switch(opt) {
@@ -81,66 +99,85 @@ void checkSelectFile(int opt) {
   }
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: processLargest
+  Description: handles the work for automatically finding the largest
+               csv and extracting the movie data from it.
 ***************************************************************************/
 void processLargest() {
   char *dirname = createFoldername();
   char *largest = findLargest();
 
-  printf("Now processing the largest file, named %s\n", largest);
+  printf("\n");
+  printf(" - Now processing the largest file, named %s\n", largest);
 
   processCSV(largest, dirname);
-  printf("Created directory with name %s\n", dirname);
+  printf(" - Created directory with name %s\n", dirname);
 
   printf("\n");
   free(largest);
   free(dirname);
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: processSmallest
+  Description: handles the work for automatically finding the smallest
+               csv and extracting the movie data from it.
 ***************************************************************************/
 void processSmallest() {
   char *dirname = createFoldername();
   char *smallest = findSmallest();
 
-  printf("Now processing the smallest file, named %s\n", smallest);
+  printf("\n");
+  printf(" - Now processing the smallest file, named %s\n", smallest);
 
   processCSV(smallest, dirname);
-  printf("Created directory with name %s\n", dirname);
+  printf(" - Created directory with name %s\n", dirname);
 
   printf("\n");
   free(smallest);
   free(dirname);
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: processFilename
+  Description: handles the work for extracting movie data from a user
+               provided .csv
 ***************************************************************************/
 void processFilename() {
   char *dirname = createFoldername();
-  char filename[25];
+  char *filename = NULL;
+  size_t len = 0;
+  ssize_t read;
+  int exists = 0;
 
-  printf("Enter the complete filename: ");
-  scanf("%s", filename);
-
-  int exists = findFilename(filename);
+  printf("Enter the complete filename e.g. \"movies_sample_1.csv\": ");
+  while ((read = getline(&filename, &len, stdin)) != -1) {
+    if (read > 0) {
+      exists = findFilename(filename);
+    }
+    break;
+  }
+  printf("\n");
 
   if (exists == 1) {
-    printf("Now processing the file named %s\n", filename);
-    processCSV(filename, dirname);
-    printf("Created directory with name %s\n", dirname);
+    char *filepath = (char *)calloc(1, strlen(filename) + 1);
+    strncpy(filepath, filename, strlen(filename) - 1);
+    strcat(filepath, "\0");
+    printf(" - Now processing the file named %s\n", filepath);
+    processCSV(filepath, dirname);
+    printf(" - Created directory with name %s\n", dirname);
+    free(filepath);
   } else  {
-    printf("ERROR: File named \"%s\" not found.\n\n", filename);
+    printf(" - ERROR: File named \"%s\" was not found.\n\n", filename);
     selectFileProcess();
   }
 
+  printf("\n");
+  free(filename);
   free(dirname);
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: findLargest()
+  Description: returns a string corresponding to the largest .csv file
+               with movies_ prefix in working dir
 ***************************************************************************/
 char *findLargest(){
   char *largest = (char *)malloc(4);
@@ -177,8 +214,9 @@ char *findLargest(){
   return largest;
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: findSmallest
+  Description: returns a string corresponding to the smallest .csv file
+               with movies_ prefix in working dir
 ***************************************************************************/
 char *findSmallest(){
   char *smallest = (char *)malloc(4);
@@ -215,15 +253,15 @@ char *findSmallest(){
   return smallest;
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: findFilename
+  Description: Returns a boolean value based on whether a user provided
+               filename exists within the working directory.
 ***************************************************************************/
 int findFilename(char *filename) {
   int a = 0; // int as bool to return
 
-  char *tempstr = (char *)calloc(1, sizeof(filename) + sizeof(SUFFIX) + 5);
-  strcpy(tempstr, filename);
-  strcat(tempstr, SUFFIX);
+  char *tempstr = (char *)calloc(1, strlen(filename) + 1);
+  strncpy(tempstr, filename, strlen(filename) - 1);
   strcat(tempstr, "\0");
 
   // open working directory
@@ -237,14 +275,22 @@ int findFilename(char *filename) {
     }
   }
 
+  // if it ain't got the .csv filetype get that thing outta here
+  char filetype [] = ".csv";
+  char *temp;
+  if ((temp = strstr(tempstr, filetype)) == NULL) {
+    a = 0;
+  }
+
   closedir(wd);
   free(tempstr);
 
   return a;
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: createFoldername
+  Description: returns a string corresponding to a a folder name with
+               a fixed prefix and a random number
 ***************************************************************************/
 char *createFoldername() {
   char onid [] = "martgarr.movies.";
@@ -265,15 +311,16 @@ char *createFoldername() {
   return str;
 }
 /**************************************************************************
-  Title:
-  Description:
+  Title: processCSV
+  Description: Goes line by line through provided csv file and extracts
+               the title of each movie and puts it into a .txt file in the
+               provided directory according to the year of its release.
 ***************************************************************************/
 void processCSV(char *filename, char *dirname) {
   // turn the filename into a usable path
   char *dPath = (char *)calloc(1, strlen(dirname) + 12);
   strcpy(dPath, "./");
   strcat(dPath, dirname);
-  printf("filepath: %s\n", dPath);
 
   // create new directory w/ rwxr-x--- permissions
   int newdir = mkdir(dirname, 0750);
@@ -285,7 +332,7 @@ void processCSV(char *filename, char *dirname) {
   ssize_t nread;
 
   // get rid of that line with none of the GOOD data, that realLY REALLY GOOD DATA
-  nread = getline(&temp, &len, data);
+    nread = getline(&temp, &len, data);
   // go line by line through source csv and output into corresponding txt files
   while ((nread = getline(&temp, &len, data)) != -1){
     // get the year the current line is associated with
@@ -294,33 +341,31 @@ void processCSV(char *filename, char *dirname) {
     char *tempstr;
     char *token = strtok_r(duplicate, ",", &tempstr);
     token = strtok_r(NULL, ",", &tempstr);
+
     // string stuff to make year a usable path
     strcpy(year, dirname);
     strcat(year, "/");
     strcat(year, token);
     strcat(year, ".txt\0");
 
-    // make or append to corresponding txt file and then adjust permissions.
+    // make or append to corresponding txt file
     FILE *f = fopen(year, "a+");
     token = strtok_r(temp, ",", &tempstr);
+
+    // repurpose string to format movie title string and append to doc
     duplicate = (char *)realloc(duplicate, strlen(token) + strlen("\n\0") + 1);
     strcpy(duplicate, token);
     strcat(duplicate, "\n\0");
     fputs(duplicate, f);
 
+    // clean up any loose memory and adjust file permissions
     fclose(f);
     int permissions = chmod(year, 0640);
     free(duplicate);
   }
 
   fclose(data);
+  free(temp);
   free(year);
   free(dPath);
-}
-/**************************************************************************
-  Title: clearInput
-  Description: "empties" the input buffer.
-***************************************************************************/
-void clearInput() {
-  while (getchar() != '\n');
 }

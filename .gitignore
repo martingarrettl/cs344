@@ -1,7 +1,8 @@
 .ccls-cache/
-testfiles/
+hw2/tesfiles/
 *.out
 *.gch
-movies*
+movies
 vgcore.*
 martgarr.*/
+movies*

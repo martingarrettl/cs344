@@ -41,7 +41,5 @@ char *createFoldername();
 // process the csv
 void processCSV(char *, char *);
 
-// helpful functions
-void clearInput();
 
 #endif
